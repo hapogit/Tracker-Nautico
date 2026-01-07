@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GPS Precision Pro</title>
+    <title>Nautic Tracker Sea Edition</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,222 +12,259 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sea: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9', /* Sky Blue */
+                            600: '#0284c7',
+                            800: '#075985',
+                            900: '#0c4a6e', /* Deep Navy */
+                        },
+                        teal: {
+                            500: '#14b8a6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         body, html { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         #map { height: 100%; width: 100%; z-index: 1; }
         
-        /* --- Pannelli Comuni --- */
+        /* --- Glassmorphism White Theme --- */
         .glass-panel {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(255,255,255,0.8);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px -5px rgba(12, 74, 110, 0.15); /* Ombra blu scura leggera */
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* --- Pannello Controlli (DESTRA) --- */
-        .controls-overlay {
-            z-index: 1000;
-            transform-origin: top right;
-        }
+        /* Transizioni Pannelli */
+        .controls-overlay { z-index: 1000; transform-origin: top right; }
+        .stats-overlay { z-index: 1000; transform-origin: top left; }
 
         .panel-hidden-right {
             opacity: 0;
-            transform: scale(0.9) translateX(20px) translateY(-20px);
+            transform: scale(0.95) translateX(20px);
             pointer-events: none;
             visibility: hidden;
         }
 
-        /* --- Pannello Report (SINISTRA) --- */
-        .stats-overlay {
-            z-index: 1000;
-            transform-origin: top left;
-        }
-        
-        .stats-card { width: 260px; }
+        .stats-card { width: 280px; }
 
-        /* Icone Rotonde */
+        /* Icone Rotonde Flottanti */
         .circle-btn {
-            width: 3rem; height: 3rem;
-            border-radius: 9999px;
+            width: 3.5rem; height: 3.5rem;
+            border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s, background-color 0.2s;
+            font-size: 1.4rem;
+            background: white;
+            color: #0c4a6e; /* Sea 900 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
             cursor: pointer;
             z-index: 1001;
+            border: 1px solid #e0f2fe;
         }
-        .circle-btn:active { transform: scale(0.95); }
+        .circle-btn:active { transform: scale(0.9); }
+        .circle-btn:hover { background-color: #f0f9ff; color: #0284c7; }
 
         .hidden { display: none !important; }
 
-        /* Animazione REC */
-        .recording-pulse-border {
-            animation: pulse-border-red 2s infinite;
-            background-color: white; color: #dc2626;
-            border: 2px solid #dc2626;
+        /* Pulsante REC (Rosso Nautico) */
+        .recording-pulse-btn {
+            background-color: white;
+            color: #e11d48; /* Rose 600 */
+            border: 2px solid #e11d48;
+            animation: pulse-border-sea 2s infinite;
         }
 
-        @keyframes pulse-border-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        @keyframes pulse-border-sea {
+            0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(225, 29, 72, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
         }
         
         .compass-arrow { display: inline-block; transition: transform 0.5s ease-out; }
 
         /* Signal Strength Bars */
-        .signal-bar { width: 4px; border-radius: 1px; background-color: #e2e8f0; margin-right: 2px; display: inline-block;}
-        .signal-bar.active-low { background-color: #ef4444; }
-        .signal-bar.active-med { background-color: #eab308; }
-        .signal-bar.active-high { background-color: #22c55e; }
+        .signal-bar { width: 4px; border-radius: 2px; background-color: #cbd5e1; margin-right: 2px; display: inline-block;}
+        .signal-bar.active-low { background-color: #f43f5e; }
+        .signal-bar.active-med { background-color: #f59e0b; }
+        .signal-bar.active-high { background-color: #10b981; }
+
+        /* Button Interaction */
+        .btn-interact { transition: transform 0.1s; }
+        .btn-interact:active { transform: scale(0.97); }
+
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-slate-50 font-sans text-sea-900">
 
     <!-- ========================================== -->
-    <!-- ZONA SINISTRA: RIEPILOGO / REGISTRO        -->
+    <!-- ZONA SINISTRA: REGISTRO / STATS            -->
     <!-- ========================================== -->
 
     <div class="absolute top-4 left-4 flex flex-col items-start gap-2 stats-overlay">
-        <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn bg-white text-slate-700 hover:bg-gray-50">
+        <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn">
             <i class="fa-regular fa-clipboard"></i>
         </button>
 
-        <div id="stats-card" class="glass-panel stats-card p-3 hidden flex flex-col gap-2">
-            <div class="flex justify-between items-center border-b border-gray-200 pb-2">
-                <h3 class="font-bold text-sm text-slate-700"><i class="fa-solid fa-chart-line mr-2"></i>Riepilogo</h3>
-                <button onclick="toggleStatsPanel(false)" class="text-gray-400 hover:text-gray-600 px-2">
-                    <i class="fa-solid fa-xmark"></i>
+        <div id="stats-card" class="glass-panel stats-card p-5 hidden flex flex-col gap-4">
+            <!-- Header Registro -->
+            <div class="flex justify-between items-center border-b border-sea-100 pb-3">
+                <h3 class="font-bold text-sm text-sea-900 uppercase tracking-wide flex items-center">
+                    <i class="fa-solid fa-ship mr-2 text-sea-600"></i>Registro Attività
+                </h3>
+                <button onclick="toggleStatsPanel(false)" class="text-slate-400 hover:text-sea-600 transition-colors px-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             
-            <div class="grid grid-cols-2 gap-y-3 gap-x-2">
+            <!-- Griglia Dati Registro -->
+            <div class="grid grid-cols-2 gap-y-5 gap-x-4">
                 <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Durata</div>
-                    <div class="font-mono text-sm font-bold text-slate-800" id="reportDuration">--:--</div>
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Durata</div>
+                    <div class="font-mono text-lg font-bold text-sea-900" id="reportDuration">--:--</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Distanza</div>
-                    <div class="font-bold text-sm text-emerald-600"><span id="reportDistance">0.00</span> <span class="text-[10px]">Nm</span></div>
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Distanza</div>
+                    <div class="font-bold text-lg text-teal-600"><span id="reportDistance">0.00</span> <span class="text-xs text-slate-400">Nm</span></div>
                 </div>
                 <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Vel. Media</div>
-                    <div class="font-bold text-sm text-indigo-600"><span id="reportAvgSpeed">0.0</span> <span class="text-[10px]">Kt</span></div>
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Vel. Media</div>
+                    <div class="font-bold text-lg text-sea-600"><span id="reportAvgSpeed">0.0</span> <span class="text-xs text-slate-400">Kt</span></div>
                 </div>
                 <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">HDG Medio</div>
-                    <div class="font-bold text-sm text-slate-700"><span id="reportAvgHdg">---</span><span class="text-[10px]">°</span></div>
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">HDG Medio</div>
+                    <div class="font-bold text-lg text-sea-900"><span id="reportAvgHdg">---</span><span class="text-xs text-slate-400">°</span></div>
                 </div>
             </div>
-            <div class="text-center mt-1 border-t border-gray-100 pt-1">
-                 <p class="text-[10px] text-gray-400">Max: <span id="reportMaxSpeed" class="font-bold text-gray-600">0.0</span> Kts</p>
+            
+            <!-- Footer Registro -->
+            <div class="text-center mt-2 pt-3 border-t border-sea-100">
+                 <p class="text-xs text-slate-500">Velocità Massima: <span id="reportMaxSpeed" class="font-bold text-sea-800">0.0</span> Kts</p>
             </div>
         </div>
     </div>
 
 
     <!-- ========================================== -->
-    <!-- ZONA DESTRA: CONTROLLI PRINCIPALI (GPS)    -->
+    <!-- ZONA DESTRA: CONTROLLI & GPS LIVE          -->
     <!-- ========================================== -->
 
-    <button id="mini-ctrl-icon" onclick="toggleRightPanel(true)" class="hidden absolute top-4 right-4 circle-btn bg-white text-slate-800 hover:bg-gray-50 z-[1001]">
-        <i class="fa-solid fa-compass"></i>
+    <button id="mini-ctrl-icon" onclick="toggleRightPanel(true)" class="hidden absolute top-4 right-4 circle-btn z-[1001]">
+        <i class="fa-regular fa-compass"></i>
     </button>
 
-    <div id="main-panel" class="absolute top-4 right-4 w-72 flex flex-col gap-2 glass-panel controls-overlay p-3">
+    <div id="main-panel" class="absolute top-4 right-4 w-72 flex flex-col gap-3 glass-panel controls-overlay p-4">
         
+        <!-- Header Controlli -->
         <div class="flex justify-between items-center mb-1">
-            <h1 class="text-sm font-bold text-slate-800 flex items-center">
-                <i class="fa-solid fa-location-arrow mr-2"></i>Live Tracker
+            <h1 class="text-sm font-bold text-sea-900 flex items-center tracking-wide">
+                <i class="fa-solid fa-location-arrow mr-2 text-sea-500"></i>Live Tracker
             </h1>
-            <div class="flex items-center gap-2">
-                <!-- Indicatore Precisione Grafico -->
+            <div class="flex items-center gap-3">
                 <div id="signal-bars" class="flex items-end h-3 gap-0.5" title="Qualità Segnale GPS">
                     <div class="signal-bar h-1.5" id="sig-1"></div>
                     <div class="signal-bar h-2" id="sig-2"></div>
                     <div class="signal-bar h-3" id="sig-3"></div>
                 </div>
-                <button onclick="toggleRightPanel(false)" class="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
-                    <i class="fa-solid fa-compress text-xs"></i>
+                <button onclick="toggleRightPanel(false)" class="w-6 h-6 rounded-full hover:bg-sea-50 flex items-center justify-center text-slate-400 hover:text-sea-600 transition-colors">
+                    <i class="fa-solid fa-compress text-sm"></i>
                 </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-1">
-            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
-                <div class="text-[9px] text-gray-500 uppercase font-bold">Kts</div>
-                <div class="text-lg font-bold text-blue-600 leading-tight" id="speedDisplay">0.0</div>
+        <!-- Dati Live (Griglia) -->
+        <div class="grid grid-cols-3 gap-2">
+            <!-- Velocità -->
+            <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm">
+                <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Kts</div>
+                <div class="text-xl font-bold text-sea-600 leading-tight" id="speedDisplay">0.0</div>
             </div>
-            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center overflow-hidden">
-                <div class="text-[9px] text-gray-500 uppercase font-bold">HDG</div>
-                <div class="text-lg font-bold text-slate-700 leading-tight flex items-center justify-center gap-1">
-                    <span id="hdgDisplay">---</span><span class="text-xs align-top">°</span>
-                    <i id="compassArrow" class="fa-solid fa-location-arrow text-[8px] text-slate-400 compass-arrow transform -rotate-45"></i>
+            <!-- Heading -->
+            <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm overflow-hidden relative">
+                <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">HDG</div>
+                <div class="text-xl font-bold text-sea-900 leading-tight flex items-center justify-center gap-1">
+                    <span id="hdgDisplay">---</span><span class="text-xs align-top text-slate-400">°</span>
                 </div>
+                <i id="compassArrow" class="fa-solid fa-location-arrow absolute bottom-1 right-1 text-[10px] text-sea-200 compass-arrow transform -rotate-45"></i>
             </div>
-            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
-                <div class="text-[9px] text-gray-500 uppercase font-bold">Nm</div>
-                <div class="text-lg font-bold text-emerald-600 leading-tight" id="distanceDisplay">0.00</div>
-            </div>
-        </div>
-
-        <div class="bg-slate-50 border border-slate-200 rounded p-1.5">
-            <div class="font-mono text-[10px] text-slate-700 flex justify-between">
-                <span>LAT:</span> <span id="latDisplay">--° --' --"</span>
-            </div>
-            <div class="font-mono text-[10px] text-slate-700 flex justify-between">
-                <span>LON:</span> <span id="lonDisplay">--° --' --"</span>
-            </div>
-            <!-- Info Precisione Testuale -->
-            <div class="text-[9px] text-right mt-1 text-gray-400">
-                Precisione: <span id="accuracyDisplay">--</span>m
+            <!-- Distanza -->
+            <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm">
+                <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Nm</div>
+                <div class="text-xl font-bold text-teal-500 leading-tight" id="distanceDisplay">0.00</div>
             </div>
         </div>
 
+        <!-- Coordinate Box -->
+        <div class="bg-sea-50/50 border border-sea-100 rounded-xl p-2.5">
+            <div class="font-mono text-[10px] text-sea-800 flex justify-between">
+                <span class="text-sea-400">LAT</span> <span id="latDisplay">--° --' --"</span>
+            </div>
+            <div class="font-mono text-[10px] text-sea-800 flex justify-between mt-1">
+                <span class="text-sea-400">LON</span> <span id="lonDisplay">--° --' --"</span>
+            </div>
+            <div class="text-[9px] text-right mt-1.5 text-slate-400 flex justify-end items-center gap-1">
+                <i class="fa-solid fa-crosshairs text-[8px]"></i> <span id="accuracyDisplay">--</span>m
+            </div>
+        </div>
+
+        <!-- Bottone Iniziale GPS -->
         <div id="gps-init-container" class="mt-1">
-            <button id="btnInitGPS" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 px-3 rounded shadow-sm transition-colors flex items-center justify-center">
-                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva GPS Max Precision
+            <button id="btnInitGPS" class="btn-interact w-full bg-sea-900 hover:bg-slate-800 text-white text-sm font-bold py-3 px-4 rounded-xl shadow-md shadow-sea-900/20 transition-all flex items-center justify-center">
+                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva Sensori
             </button>
-            <p class="text-[9px] text-gray-400 text-center mt-1">Impedisce spegnimento schermo.</p>
+            <p class="text-[9px] text-slate-400 text-center mt-2">Modalità alta precisione & Wake Lock attivi</p>
         </div>
 
+        <!-- Controlli Registrazione -->
         <div id="recording-controls" class="hidden flex flex-col gap-2 mt-1">
             <div class="grid grid-cols-2 gap-2">
-                <button id="btnToggle" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center">
+                <!-- Tasto Avvia: Blu Mare Vibrante -->
+                <button id="btnToggle" class="btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center">
                     <i class="fa-solid fa-play mr-2"></i> Avvia
                 </button>
-                <button id="btnFinish" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i class="fa-solid fa-flag-checkered mr-2"></i> Fine
+                <!-- Tasto Fine: Teal/Smeraldo -->
+                <button id="btnFinish" class="btn-interact bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-teal-500/30 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none" disabled>
+                    <i class="fa-solid fa-flag-checkered mr-2"></i> Salva
                 </button>
             </div>
-            <button id="btnReset" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded text-xs transition-colors">
-                Reset
+            <!-- Tasto Reset: Chiaro e Neutro -->
+            <button id="btnReset" class="btn-interact w-full bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 font-bold py-2 px-3 rounded-xl text-xs transition-colors mt-1">
+                Azzera Dati Sessione
             </button>
         </div>
     </div>
 
 
+    <!-- Mappa -->
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         // --- CONFIGURAZIONE PRECISIONE ---
-        const MIN_ACCURACY_THRESHOLD = 25; // Metri. Ignora punti con errore maggiore di questo
-        const MIN_DISTANCE_DELTA = 3;      // Metri. Ignora movimenti minori di questo (jitter)
-        const GPS_OPTIONS = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0 // Non usare mai cache, forza dati freschi
-        };
+        const MIN_ACCURACY_THRESHOLD = 30; 
+        const MIN_DISTANCE_DELTA = 3;      
+        const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
         // --- Variabili Globali ---
         let map, marker, polyline, accuracyCircle;
         let isRecording = false;
         let watchId = null;
-        let wakeLock = null; // Per Screen Wake Lock API
+        let wakeLock = null; 
         let pathCoordinates = [];
         let totalDistanceMeters = 0;
         let gpsActive = false;
@@ -237,20 +274,15 @@
         let maxSpeedObserved = 0;
         let headingSamples = []; 
 
-        // --- Gestione Wake Lock (Mantiene schermo acceso) ---
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Screen Wake Lock active');
-                    wakeLock.addEventListener('release', () => console.log('Wake Lock released'));
                 }
-            } catch (err) {
-                console.warn(`${err.name}, ${err.message}`);
-            }
+            } catch (err) { console.warn(err); }
         }
 
-        // --- UI ---
+        // --- UI Managers ---
         const mainPanel = document.getElementById('main-panel');
         const miniCtrlIcon = document.getElementById('mini-ctrl-icon');
         const statsIconBtn = document.getElementById('stats-icon-btn');
@@ -269,10 +301,10 @@
         function updateMiniCtrlIconState() {
             if (isRecording) {
                 miniCtrlIcon.innerHTML = '<i class="fa-solid fa-record-vinyl"></i>';
-                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn flex items-center justify-center text-xl cursor-pointer recording-pulse-border z-[1001]";
+                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn recording-pulse-btn z-[1001]";
             } else {
-                miniCtrlIcon.innerHTML = '<i class="fa-solid fa-compass"></i>';
-                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn bg-white text-slate-800 flex items-center justify-center text-xl cursor-pointer hover:bg-gray-50 z-[1001]";
+                miniCtrlIcon.innerHTML = '<i class="fa-regular fa-compass"></i>';
+                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn z-[1001]";
             }
         }
 
@@ -284,20 +316,14 @@
             const accTxt = document.getElementById('accuracyDisplay');
 
             if (accuracy <= 10) {
-                // Ottimo (Verde)
-                bars[0].classList.add('active-high');
-                bars[1].classList.add('active-high');
-                bars[2].classList.add('active-high');
-                accTxt.className = "font-bold text-emerald-600";
+                bars[0].classList.add('active-high'); bars[1].classList.add('active-high'); bars[2].classList.add('active-high');
+                accTxt.className = "font-bold text-teal-600";
             } else if (accuracy <= MIN_ACCURACY_THRESHOLD) {
-                // Accettabile (Giallo)
-                bars[0].classList.add('active-med');
-                bars[1].classList.add('active-med');
-                accTxt.className = "font-bold text-yellow-600";
+                bars[0].classList.add('active-med'); bars[1].classList.add('active-med');
+                accTxt.className = "font-bold text-yellow-500";
             } else {
-                // Scarso (Rosso)
                 bars[0].classList.add('active-low');
-                accTxt.className = "font-bold text-red-600";
+                accTxt.className = "font-bold text-red-500";
             }
         }
 
@@ -309,14 +335,13 @@
 
             const boatIcon = L.divIcon({
                 className: 'custom-div-icon',
-                html: "<div style='background-color:#2563eb; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.5);'></div>",
-                iconSize: [12, 12], iconAnchor: [6, 6]
+                html: "<div style='background-color:#0ea5e9; width: 14px; height: 14px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);'></div>",
+                iconSize: [14, 14], iconAnchor: [7, 7]
             });
 
             marker = L.marker([0, 0], {icon: boatIcon});
-            // Cerchio blu chiaro che mostra l'area di incertezza (Accuracy radius)
-            accuracyCircle = L.circle([0,0], {radius: 0, color: '#3b82f6', weight: 1, opacity: 0.4, fillOpacity: 0.1}).addTo(map);
-            polyline = L.polyline([], {color: '#ef4444', weight: 3}).addTo(map);
+            accuracyCircle = L.circle([0,0], {radius: 0, color: '#0ea5e9', weight: 1, opacity: 0.3, fillOpacity: 0.05}).addTo(map);
+            polyline = L.polyline([], {color: '#0284c7', weight: 4, opacity: 0.8}).addTo(map);
         }
 
         // --- LOGICA ---
@@ -346,10 +371,7 @@
         function startGPS() {
             const btnInit = document.getElementById('btnInitGPS');
             btnInit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Calibrazione...';
-            
-            // Richiedi Wake Lock
             requestWakeLock();
-
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(processPosition, handleError, GPS_OPTIONS);
             } else {
@@ -359,29 +381,16 @@
 
         function processPosition(position) {
             const accuracy = position.coords.accuracy;
-            
-            // Aggiorna UI segnale sempre, anche se i dati sono scarsi
             updateSignalStrength(accuracy);
 
             if (!gpsActive) {
                 gpsActive = true;
                 document.getElementById('gps-init-container').classList.add('hidden');
                 document.getElementById('recording-controls').classList.remove('hidden');
-                
-                // Prima posizione: centra mappa anche se precisione bassa
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                map.setView([lat, lon], 18);
+                map.setView([position.coords.latitude, position.coords.longitude], 18);
             }
 
-            // --- FILTRO PRECISIONE ---
-            // Se l'accuratezza è peggiore della soglia (es. > 25m), IGNORA questo punto per i calcoli
-            // Mostriamo solo un aggiornamento visivo "debole" sulla mappa ma non registriamo i dati
-            if (accuracy > MIN_ACCURACY_THRESHOLD) {
-                console.warn(`Punto ignorato: precisione ${accuracy}m insufficiente`);
-                return; 
-            }
-
+            if (accuracy > MIN_ACCURACY_THRESHOLD) return; 
             updateValidPosition(position);
         }
 
@@ -392,9 +401,7 @@
             let heading = position.coords.heading;
             const accuracy = position.coords.accuracy;
 
-            // Filtro Drift da fermi: se velocità < 0.2 m/s, considerala 0
             if (speedMs < 0.2) speedMs = 0;
-            
             const speedKts = parseFloat((speedMs * 1.94384).toFixed(1));
 
             // UI Updates
@@ -407,19 +414,13 @@
                 document.getElementById('compassArrow').style.transform = `rotate(${heading - 45}deg)`;
             }
 
-            // Map Update
             const currentLatLng = [lat, lon];
-            if (!map.hasLayer(marker)) {
-                marker.setLatLng(currentLatLng).addTo(map);
-            } else {
-                marker.setLatLng(currentLatLng);
-            }
+            if (!map.hasLayer(marker)) marker.setLatLng(currentLatLng).addTo(map);
+            else marker.setLatLng(currentLatLng);
             
-            // Aggiorna cerchio accuratezza
             accuracyCircle.setLatLng(currentLatLng);
             accuracyCircle.setRadius(accuracy);
 
-            // Logica Registrazione
             if (isRecording) {
                 if (speedKts > 0.5 && heading !== null && !isNaN(heading)) {
                     const rad = heading * (Math.PI / 180);
@@ -431,7 +432,6 @@
                 else {
                     const last = pathCoordinates[pathCoordinates.length - 1];
                     const dist = getDistance(last[0], last[1], lat, lon);
-                    // FILTRO DISTANZA MINIMA
                     if (dist > MIN_DISTANCE_DELTA) { 
                         totalDistanceMeters += dist;
                         shouldAddPoint = true;
@@ -442,7 +442,7 @@
                 if (shouldAddPoint) {
                     pathCoordinates.push(currentLatLng);
                     polyline.setLatLngs(pathCoordinates);
-                    map.panTo(currentLatLng); // Centra mappa sul punto valido
+                    map.panTo(currentLatLng);
                 }
 
                 if (speedKts > maxSpeedObserved) maxSpeedObserved = speedKts;
@@ -452,8 +452,7 @@
         function handleError(err) {
             console.warn("GPS Error", err);
             if(!gpsActive) {
-                document.getElementById('btnInitGPS').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Riprova';
-                alert("Errore GPS: " + err.message);
+                document.getElementById('btnInitGPS').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Errore GPS';
             }
         }
 
@@ -462,12 +461,10 @@
             isRecording = false;
             endTime = new Date();
             
-            if (wakeLock) {
-                wakeLock.release().then(() => wakeLock = null);
-            }
+            if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
 
             btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-            btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
+            btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
             updateMiniCtrlIconState();
 
             // Calcoli
@@ -508,14 +505,18 @@
                 if (!startTime) startTime = new Date();
                 btnFinish.disabled = false;
                 toggleStatsPanel(false);
+                
+                // Cambio stile PAUSA (Ambra)
                 btnToggle.innerHTML = '<i class="fa-solid fa-pause mr-2"></i> Pausa';
-                btnToggle.className = "bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
+                btnToggle.className = "btn-interact bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-amber-500/30 transition-all flex items-center justify-center";
+                
                 updateMiniCtrlIconState();
                 setTimeout(() => toggleRightPanel(false), 1500);
             } else {
                 isRecording = false;
+                // Cambio stile RIPRENDI (Blu)
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Riprendi';
-                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
+                btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
                 updateMiniCtrlIconState();
             }
         });
@@ -532,14 +533,15 @@
                 document.getElementById('speedDisplay').innerText = "0.0";
                 document.getElementById('hdgDisplay').innerText = "---";
                 btnFinish.disabled = true;
+                
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
+                btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
+                
                 updateMiniCtrlIconState();
                 toggleStatsPanel(false);
             }
         });
 
-        // Gestione cambio visibilità (se l'utente cambia tab, il wake lock potrebbe cadere)
         document.addEventListener('visibilitychange', async () => {
             if (wakeLock !== null && document.visibilityState === 'visible') {
                 await requestWakeLock();
