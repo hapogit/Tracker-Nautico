@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nautic Tracker Sea Edition</title>
+    <title>Nautic Logbook</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,14 +20,12 @@
                         sea: {
                             50: '#f0f9ff',
                             100: '#e0f2fe',
-                            500: '#0ea5e9', /* Sky Blue */
+                            500: '#0ea5e9',
                             600: '#0284c7',
                             800: '#075985',
-                            900: '#0c4a6e', /* Deep Navy */
+                            900: '#0c4a6e',
                         },
-                        teal: {
-                            500: '#14b8a6',
-                        }
+                        teal: { 500: '#14b8a6', 600: '#0d9488' }
                     }
                 }
             }
@@ -38,57 +36,40 @@
         body, html { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         #map { height: 100%; width: 100%; z-index: 1; }
         
-        /* --- Glassmorphism White Theme --- */
+        /* Glass Panel Styling */
         .glass-panel {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-radius: 16px;
-            box-shadow: 0 4px 20px -5px rgba(12, 74, 110, 0.15); /* Ombra blu scura leggera */
+            box-shadow: 0 4px 20px -5px rgba(12, 74, 110, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.8);
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* Transizioni Pannelli */
         .controls-overlay { z-index: 1000; transform-origin: top right; }
         .stats-overlay { z-index: 1000; transform-origin: top left; }
 
-        .panel-hidden-right {
-            opacity: 0;
-            transform: scale(0.95) translateX(20px);
-            pointer-events: none;
-            visibility: hidden;
-        }
-
-        .stats-card { width: 280px; }
-
-        /* Icone Rotonde Flottanti */
+        .panel-hidden-right { opacity: 0; transform: scale(0.95) translateX(20px); pointer-events: none; visibility: hidden; }
+        
+        /* Icone Flottanti */
         .circle-btn {
-            width: 3.5rem; height: 3.5rem;
-            border-radius: 50%;
+            width: 3.5rem; height: 3.5rem; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem;
-            background: white;
-            color: #0c4a6e; /* Sea 900 */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transition: all 0.2s ease;
-            cursor: pointer;
-            z-index: 1001;
-            border: 1px solid #e0f2fe;
+            font-size: 1.4rem; background: white; color: #0c4a6e;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s ease;
+            cursor: pointer; z-index: 1001; border: 1px solid #e0f2fe;
         }
         .circle-btn:active { transform: scale(0.9); }
         .circle-btn:hover { background-color: #f0f9ff; color: #0284c7; }
 
         .hidden { display: none !important; }
 
-        /* Pulsante REC (Rosso Nautico) */
+        /* Pulsante REC Pulsante */
         .recording-pulse-btn {
-            background-color: white;
-            color: #e11d48; /* Rose 600 */
-            border: 2px solid #e11d48;
+            background-color: white; color: #e11d48; border: 2px solid #e11d48;
             animation: pulse-border-sea 2s infinite;
         }
-
         @keyframes pulse-border-sea {
             0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); }
             70% { box-shadow: 0 0 0 8px rgba(225, 29, 72, 0); }
@@ -97,70 +78,72 @@
         
         .compass-arrow { display: inline-block; transition: transform 0.5s ease-out; }
 
-        /* Signal Strength Bars */
+        /* Signal Bars */
         .signal-bar { width: 4px; border-radius: 2px; background-color: #cbd5e1; margin-right: 2px; display: inline-block;}
         .signal-bar.active-low { background-color: #f43f5e; }
         .signal-bar.active-med { background-color: #f59e0b; }
         .signal-bar.active-high { background-color: #10b981; }
 
-        /* Button Interaction */
         .btn-interact { transition: transform 0.1s; }
         .btn-interact:active { transform: scale(0.97); }
 
+        /* Scrollbar personalizzata per la lista sessioni */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        
+        .session-item {
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .session-item:hover { background-color: #f0f9ff; }
+        .session-item.active { background-color: #e0f2fe; border-left: 3px solid #0ea5e9; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-sea-900">
 
     <!-- ========================================== -->
-    <!-- ZONA SINISTRA: REGISTRO / STATS            -->
+    <!-- ZONA SINISTRA: DIARIO DI BORDO (STORICO)   -->
     <!-- ========================================== -->
 
-    <div class="absolute top-4 left-4 flex flex-col items-start gap-2 stats-overlay">
-        <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn">
-            <i class="fa-regular fa-clipboard"></i>
-        </button>
+    <div class="absolute top-4 left-4 flex flex-col items-start gap-2 stats-overlay h-[calc(100%-2rem)] pointer-events-none">
+        <!-- Pointer events auto per permettere click sui figli -->
+        <div class="pointer-events-auto flex flex-col items-start gap-2 h-full">
+            
+            <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn">
+                <i class="fa-solid fa-book-journal-whills"></i>
+            </button>
 
-        <div id="stats-card" class="glass-panel stats-card p-5 hidden flex flex-col gap-4">
-            <!-- Header Registro -->
-            <div class="flex justify-between items-center border-b border-sea-100 pb-3">
-                <h3 class="font-bold text-sm text-sea-900 uppercase tracking-wide flex items-center">
-                    <i class="fa-solid fa-ship mr-2 text-sea-600"></i>Registro Attività
-                </h3>
-                <button onclick="toggleStatsPanel(false)" class="text-slate-400 hover:text-sea-600 transition-colors px-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            
-            <!-- Griglia Dati Registro -->
-            <div class="grid grid-cols-2 gap-y-5 gap-x-4">
-                <div class="text-center">
-                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Durata</div>
-                    <div class="font-mono text-lg font-bold text-sea-900" id="reportDuration">--:--</div>
+            <div id="stats-card" class="glass-panel w-80 p-4 hidden flex flex-col gap-3 max-h-full">
+                <!-- Header -->
+                <div class="flex justify-between items-center border-b border-sea-100 pb-3 flex-shrink-0">
+                    <h3 class="font-bold text-sm text-sea-900 uppercase tracking-wide flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left mr-2 text-sea-600"></i>Diario di Bordo
+                    </h3>
+                    <button onclick="toggleStatsPanel(false)" class="text-slate-400 hover:text-sea-600 transition-colors px-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
                 </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Distanza</div>
-                    <div class="font-bold text-lg text-teal-600"><span id="reportDistance">0.00</span> <span class="text-xs text-slate-400">Nm</span></div>
+                
+                <!-- Lista Sessioni (Scrollabile) -->
+                <div id="session-list" class="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2 min-h-[100px]">
+                    <!-- Placeholder vuoto -->
+                    <div id="empty-log-msg" class="text-center py-8 text-slate-400 text-xs italic">
+                        Nessuna attività registrata.<br>Completa una sessione per vederla qui.
+                    </div>
                 </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Vel. Media</div>
-                    <div class="font-bold text-lg text-sea-600"><span id="reportAvgSpeed">0.0</span> <span class="text-xs text-slate-400">Kt</span></div>
+
+                <!-- Footer (Totali globali opzionali o info) -->
+                <div class="text-center pt-2 border-t border-sea-100 text-[10px] text-slate-400 flex-shrink-0">
+                    Clicca su una sessione per vedere il tracciato.
                 </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">HDG Medio</div>
-                    <div class="font-bold text-lg text-sea-900"><span id="reportAvgHdg">---</span><span class="text-xs text-slate-400">°</span></div>
-                </div>
-            </div>
-            
-            <!-- Footer Registro -->
-            <div class="text-center mt-2 pt-3 border-t border-sea-100">
-                 <p class="text-xs text-slate-500">Velocità Massima: <span id="reportMaxSpeed" class="font-bold text-sea-800">0.0</span> Kts</p>
             </div>
         </div>
     </div>
 
 
     <!-- ========================================== -->
-    <!-- ZONA DESTRA: CONTROLLI & GPS LIVE          -->
+    <!-- ZONA DESTRA: CONTROLLI LIVE                -->
     <!-- ========================================== -->
 
     <button id="mini-ctrl-icon" onclick="toggleRightPanel(true)" class="hidden absolute top-4 right-4 circle-btn z-[1001]">
@@ -169,7 +152,7 @@
 
     <div id="main-panel" class="absolute top-4 right-4 w-72 flex flex-col gap-3 glass-panel controls-overlay p-4">
         
-        <!-- Header Controlli -->
+        <!-- Header -->
         <div class="flex justify-between items-center mb-1">
             <h1 class="text-sm font-bold text-sea-900 flex items-center tracking-wide">
                 <i class="fa-solid fa-location-arrow mr-2 text-sea-500"></i>Live Tracker
@@ -186,14 +169,12 @@
             </div>
         </div>
 
-        <!-- Dati Live (Griglia) -->
+        <!-- Griglia Dati Live -->
         <div class="grid grid-cols-3 gap-2">
-            <!-- Velocità -->
             <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Kts</div>
                 <div class="text-xl font-bold text-sea-600 leading-tight" id="speedDisplay">0.0</div>
             </div>
-            <!-- Heading -->
             <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm overflow-hidden relative">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">HDG</div>
                 <div class="text-xl font-bold text-sea-900 leading-tight flex items-center justify-center gap-1">
@@ -201,14 +182,12 @@
                 </div>
                 <i id="compassArrow" class="fa-solid fa-location-arrow absolute bottom-1 right-1 text-[10px] text-sea-200 compass-arrow transform -rotate-45"></i>
             </div>
-            <!-- Distanza -->
             <div class="bg-white/50 border border-sea-100 rounded-xl p-2 text-center shadow-sm">
                 <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Nm</div>
                 <div class="text-xl font-bold text-teal-500 leading-tight" id="distanceDisplay">0.00</div>
             </div>
         </div>
 
-        <!-- Coordinate Box -->
         <div class="bg-sea-50/50 border border-sea-100 rounded-xl p-2.5">
             <div class="font-mono text-[10px] text-sea-800 flex justify-between">
                 <span class="text-sea-400">LAT</span> <span id="latDisplay">--° --' --"</span>
@@ -221,29 +200,25 @@
             </div>
         </div>
 
-        <!-- Bottone Iniziale GPS -->
+        <!-- Init GPS -->
         <div id="gps-init-container" class="mt-1">
             <button id="btnInitGPS" class="btn-interact w-full bg-sea-900 hover:bg-slate-800 text-white text-sm font-bold py-3 px-4 rounded-xl shadow-md shadow-sea-900/20 transition-all flex items-center justify-center">
                 <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva Sensori
             </button>
-            <p class="text-[9px] text-slate-400 text-center mt-2">Modalità alta precisione & Wake Lock attivi</p>
         </div>
 
-        <!-- Controlli Registrazione -->
+        <!-- Controlli -->
         <div id="recording-controls" class="hidden flex flex-col gap-2 mt-1">
             <div class="grid grid-cols-2 gap-2">
-                <!-- Tasto Avvia: Blu Mare Vibrante -->
                 <button id="btnToggle" class="btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center">
                     <i class="fa-solid fa-play mr-2"></i> Avvia
                 </button>
-                <!-- Tasto Fine: Teal/Smeraldo -->
                 <button id="btnFinish" class="btn-interact bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-teal-500/30 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none" disabled>
-                    <i class="fa-solid fa-flag-checkered mr-2"></i> Salva
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Salva
                 </button>
             </div>
-            <!-- Tasto Reset: Chiaro e Neutro -->
             <button id="btnReset" class="btn-interact w-full bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 font-bold py-2 px-3 rounded-xl text-xs transition-colors mt-1">
-                Azzera Dati Sessione
+                Annulla Attività Corrente
             </button>
         </div>
     </div>
@@ -255,34 +230,36 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- CONFIGURAZIONE PRECISIONE ---
+        // --- CONFIG ---
         const MIN_ACCURACY_THRESHOLD = 30; 
         const MIN_DISTANCE_DELTA = 3;      
         const GPS_OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
-        // --- Variabili Globali ---
-        let map, marker, polyline, accuracyCircle;
+        // --- GLOBAL STATE ---
+        let map, marker, livePolyline, accuracyCircle;
+        let historyPolyline = null; // Per visualizzare tracce passate
         let isRecording = false;
         let watchId = null;
         let wakeLock = null; 
-        let pathCoordinates = [];
-        let totalDistanceMeters = 0;
         let gpsActive = false;
 
+        // Current Session Data
+        let currentPath = [];
+        let currentDistance = 0;
         let startTime = null;
-        let endTime = null;
-        let maxSpeedObserved = 0;
+        let maxSpeed = 0;
         let headingSamples = []; 
+        
+        // Logbook Data
+        let sessions = []; // Array di oggetti sessione
 
+        // --- WAKE LOCK ---
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) { console.warn(err); }
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
+            catch (err) { console.warn(err); }
         }
 
-        // --- UI Managers ---
+        // --- UI TOGGLERS ---
         const mainPanel = document.getElementById('main-panel');
         const miniCtrlIcon = document.getElementById('mini-ctrl-icon');
         const statsIconBtn = document.getElementById('stats-icon-btn');
@@ -311,23 +288,19 @@
         function updateSignalStrength(accuracy) {
             const bars = [document.getElementById('sig-1'), document.getElementById('sig-2'), document.getElementById('sig-3')];
             bars.forEach(b => b.className = 'signal-bar ' + (b.id === 'sig-1' ? 'h-1.5' : b.id === 'sig-2' ? 'h-2' : 'h-3'));
-            
-            document.getElementById('accuracyDisplay').innerText = Math.round(accuracy);
             const accTxt = document.getElementById('accuracyDisplay');
+            document.getElementById('accuracyDisplay').innerText = Math.round(accuracy);
 
             if (accuracy <= 10) {
-                bars[0].classList.add('active-high'); bars[1].classList.add('active-high'); bars[2].classList.add('active-high');
-                accTxt.className = "font-bold text-teal-600";
+                bars.forEach(b => b.classList.add('active-high')); accTxt.className = "font-bold text-teal-600";
             } else if (accuracy <= MIN_ACCURACY_THRESHOLD) {
-                bars[0].classList.add('active-med'); bars[1].classList.add('active-med');
-                accTxt.className = "font-bold text-yellow-500";
+                bars[0].classList.add('active-med'); bars[1].classList.add('active-med'); accTxt.className = "font-bold text-yellow-500";
             } else {
-                bars[0].classList.add('active-low');
-                accTxt.className = "font-bold text-red-500";
+                bars[0].classList.add('active-low'); accTxt.className = "font-bold text-red-500";
             }
         }
 
-        // --- MAPPA ---
+        // --- MAP ENGINE ---
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([41.9028, 12.4964], 6);
             L.control.zoom({ position: 'bottomleft' }).addTo(map);
@@ -341,10 +314,10 @@
 
             marker = L.marker([0, 0], {icon: boatIcon});
             accuracyCircle = L.circle([0,0], {radius: 0, color: '#0ea5e9', weight: 1, opacity: 0.3, fillOpacity: 0.05}).addTo(map);
-            polyline = L.polyline([], {color: '#0284c7', weight: 4, opacity: 0.8}).addTo(map);
+            livePolyline = L.polyline([], {color: '#e11d48', weight: 4, opacity: 0.9}).addTo(map); // Rosso per LIVE
         }
 
-        // --- LOGICA ---
+        // --- GPS LOGIC ---
         function toDMS(c, isLat) {
             const abs = Math.abs(c);
             const d = Math.floor(abs);
@@ -370,7 +343,7 @@
 
         function startGPS() {
             const btnInit = document.getElementById('btnInitGPS');
-            btnInit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Calibrazione...';
+            btnInit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Avvio...';
             requestWakeLock();
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(processPosition, handleError, GPS_OPTIONS);
@@ -399,12 +372,11 @@
             const lon = position.coords.longitude;
             let speedMs = position.coords.speed || 0;
             let heading = position.coords.heading;
-            const accuracy = position.coords.accuracy;
-
+            
             if (speedMs < 0.2) speedMs = 0;
             const speedKts = parseFloat((speedMs * 1.94384).toFixed(1));
 
-            // UI Updates
+            // UI
             document.getElementById('latDisplay').innerText = toDMS(lat, true);
             document.getElementById('lonDisplay').innerText = toDMS(lon, false);
             document.getElementById('speedDisplay').innerText = speedKts;
@@ -414,13 +386,13 @@
                 document.getElementById('compassArrow').style.transform = `rotate(${heading - 45}deg)`;
             }
 
+            // Map Update
             const currentLatLng = [lat, lon];
             if (!map.hasLayer(marker)) marker.setLatLng(currentLatLng).addTo(map);
             else marker.setLatLng(currentLatLng);
-            
-            accuracyCircle.setLatLng(currentLatLng);
-            accuracyCircle.setRadius(accuracy);
+            accuracyCircle.setLatLng(currentLatLng).setRadius(position.coords.accuracy);
 
+            // Recording
             if (isRecording) {
                 if (speedKts > 0.5 && heading !== null && !isNaN(heading)) {
                     const rad = heading * (Math.PI / 180);
@@ -428,124 +400,207 @@
                 }
 
                 let shouldAddPoint = false;
-                if (pathCoordinates.length === 0) shouldAddPoint = true;
+                if (currentPath.length === 0) shouldAddPoint = true;
                 else {
-                    const last = pathCoordinates[pathCoordinates.length - 1];
+                    const last = currentPath[currentPath.length - 1];
                     const dist = getDistance(last[0], last[1], lat, lon);
                     if (dist > MIN_DISTANCE_DELTA) { 
-                        totalDistanceMeters += dist;
+                        currentDistance += dist;
                         shouldAddPoint = true;
-                        document.getElementById('distanceDisplay').innerText = (totalDistanceMeters / 1852).toFixed(2);
+                        document.getElementById('distanceDisplay').innerText = (currentDistance / 1852).toFixed(2);
                     }
                 }
 
                 if (shouldAddPoint) {
-                    pathCoordinates.push(currentLatLng);
-                    polyline.setLatLngs(pathCoordinates);
+                    currentPath.push(currentLatLng);
+                    livePolyline.setLatLngs(currentPath);
                     map.panTo(currentLatLng);
                 }
 
-                if (speedKts > maxSpeedObserved) maxSpeedObserved = speedKts;
+                if (speedKts > maxSpeed) maxSpeed = speedKts;
             }
         }
 
         function handleError(err) {
             console.warn("GPS Error", err);
-            if(!gpsActive) {
-                document.getElementById('btnInitGPS').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Errore GPS';
-            }
+            if(!gpsActive) document.getElementById('btnInitGPS').innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Errore GPS';
         }
 
-        function finishSession() {
-            if (!isRecording && totalDistanceMeters === 0) return;
-            isRecording = false;
-            endTime = new Date();
+        // --- SESSION MANAGEMENT ---
+
+        function saveSession() {
+            if (!isRecording && currentDistance === 0) return;
             
-            if (wakeLock) { wakeLock.release().then(() => wakeLock = null); }
+            // 1. Ferma e calcola dati
+            isRecording = false;
+            let endTime = new Date();
+            let durationMs = startTime ? (endTime - startTime) : 0;
+            let distNm = currentDistance / 1852;
+            let durationHours = durationMs / (1000 * 60 * 60);
+            let avgSpeed = durationHours > 0 ? (distNm / durationHours) : 0;
+            let avgHdg = headingSamples.length > 0 ? Math.round(calculateAverageHeading(headingSamples)) : "---";
 
-            btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-            btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
-            updateMiniCtrlIconState();
-
-            // Calcoli
-            const durationMs = startTime ? (endTime - startTime) : 0;
-            const distNm = totalDistanceMeters / 1852;
-            const durationHours = durationMs / (1000 * 60 * 60);
-            const avgSpeed = durationHours > 0 ? (distNm / durationHours) : 0;
-
-            let avgHdgDisplay = "---";
-            if (headingSamples.length > 0) {
-                avgHdgDisplay = Math.round(calculateAverageHeading(headingSamples));
-            }
-
+            // Formatta Tempo
             let s = Math.floor(durationMs / 1000);
             let m = Math.floor(s / 60); s %= 60;
             let h = Math.floor(m / 60); m %= 60;
-            const timeString = `${h>0?h+'h ':''}${m}m ${s}s`;
+            let timeStr = `${h>0?h+'h ':''}${m}m ${s}s`;
+            let dateStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-            document.getElementById('reportDuration').innerText = timeString;
-            document.getElementById('reportDistance').innerText = distNm.toFixed(2);
-            document.getElementById('reportMaxSpeed').innerText = maxSpeedObserved.toFixed(1);
-            document.getElementById('reportAvgSpeed').innerText = avgSpeed.toFixed(1);
-            document.getElementById('reportAvgHdg').innerText = avgHdgDisplay;
+            // 2. Crea oggetto Sessione
+            const newSession = {
+                id: Date.now(),
+                date: dateStr,
+                duration: timeStr,
+                distance: distNm.toFixed(2),
+                avgSpeed: avgSpeed.toFixed(1),
+                maxSpeed: maxSpeed.toFixed(1),
+                avgHdg: avgHdg,
+                path: [...currentPath] // Copia del tracciato
+            };
 
+            // 3. Aggiungi alla lista
+            sessions.unshift(newSession); // Più recente in alto
+            renderSessionList();
+
+            // 4. Resetta Tracker LIVE per la prossima sessione
+            resetLiveTracker();
+            
+            // 5. Apri il pannello storico per conferma
             toggleStatsPanel(true);
         }
 
-        // --- Event Listeners ---
-        document.getElementById('btnInitGPS').addEventListener('click', startGPS);
+        function resetLiveTracker() {
+            // Reset variabili
+            currentPath = [];
+            currentDistance = 0;
+            startTime = null;
+            maxSpeed = 0;
+            headingSamples = [];
+            isRecording = false;
+            
+            // Pulisci UI Live
+            livePolyline.setLatLngs([]);
+            document.getElementById('distanceDisplay').innerText = "0.00";
+            document.getElementById('speedDisplay').innerText = "0.0";
+            document.getElementById('hdgDisplay').innerText = "---";
+            
+            // Reset Pulsanti
+            const btnToggle = document.getElementById('btnToggle');
+            const btnFinish = document.getElementById('btnFinish');
+            
+            btnFinish.disabled = true;
+            btnFinish.className = "btn-interact bg-teal-500 hover:bg-teal-400 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-teal-500/30 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none";
 
+            btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
+            btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
+            
+            updateMiniCtrlIconState();
+        }
+
+        function renderSessionList() {
+            const listEl = document.getElementById('session-list');
+            listEl.innerHTML = ''; // Pulisci lista
+
+            if (sessions.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs italic">Nessuna attività registrata.<br>Completa una sessione per vederla qui.</div>';
+                return;
+            }
+
+            sessions.forEach((session, index) => {
+                const item = document.createElement('div');
+                item.className = "session-item bg-white border border-sea-100 rounded-lg p-3 shadow-sm hover:shadow-md transition-all";
+                item.onclick = () => showSessionOnMap(index);
+
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-bold text-sm text-sea-900"><i class="fa-regular fa-calendar mr-1 text-sea-500"></i> ${session.date}</div>
+                        <div class="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">${session.distance} Nm</div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
+                        <div class="bg-slate-50 rounded py-1">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Durata</div>
+                            <div class="text-slate-700 font-mono">${session.duration}</div>
+                        </div>
+                        <div class="bg-slate-50 rounded py-1">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Avg Kt</div>
+                            <div class="text-sea-700 font-bold">${session.avgSpeed}</div>
+                        </div>
+                        <div class="bg-slate-50 rounded py-1">
+                            <div class="text-[9px] uppercase font-bold text-slate-400">Max Kt</div>
+                            <div class="text-sea-700 font-bold">${session.maxSpeed}</div>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function showSessionOnMap(index) {
+            const session = sessions[index];
+            
+            // Rimuovi vecchia traccia storica se esiste
+            if (historyPolyline) {
+                map.removeLayer(historyPolyline);
+            }
+            
+            // Disegna nuova traccia (Colore Blu Mare Scuro per distinguerla dalla Live Rossa)
+            if (session.path && session.path.length > 0) {
+                historyPolyline = L.polyline(session.path, {color: '#0c4a6e', weight: 4, dashArray: '5, 10'}).addTo(map);
+                map.fitBounds(historyPolyline.getBounds(), {padding: [50, 50]});
+            }
+
+            // Evidenzia elemento lista
+            const items = document.querySelectorAll('.session-item');
+            items.forEach(i => i.classList.remove('active'));
+            items[index].classList.add('active');
+            
+            // Su mobile, chiudi il pannello stats dopo il click per mostrare la mappa
+            if (window.innerWidth < 768) toggleStatsPanel(false);
+        }
+
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('btnInitGPS').addEventListener('click', startGPS);
         const btnToggle = document.getElementById('btnToggle');
         const btnFinish = document.getElementById('btnFinish');
         const btnReset = document.getElementById('btnReset');
 
         btnToggle.addEventListener('click', () => {
+            // Se c'è una traccia storica visualizzata, la togliamo quando si inizia a registrare per pulizia
+            if (historyPolyline) map.removeLayer(historyPolyline);
+
             if (!isRecording) {
                 isRecording = true;
                 if (!startTime) startTime = new Date();
                 btnFinish.disabled = false;
-                toggleStatsPanel(false);
                 
-                // Cambio stile PAUSA (Ambra)
                 btnToggle.innerHTML = '<i class="fa-solid fa-pause mr-2"></i> Pausa';
                 btnToggle.className = "btn-interact bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-amber-500/30 transition-all flex items-center justify-center";
-                
                 updateMiniCtrlIconState();
                 setTimeout(() => toggleRightPanel(false), 1500);
             } else {
                 isRecording = false;
-                // Cambio stile RIPRENDI (Blu)
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Riprendi';
                 btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
                 updateMiniCtrlIconState();
             }
         });
 
-        btnFinish.addEventListener('click', finishSession);
+        btnFinish.addEventListener('click', () => {
+            if (confirm("Terminare e Salvare la sessione nel Diario?")) {
+                saveSession();
+            }
+        });
 
         btnReset.addEventListener('click', () => {
-            if (confirm("Reset dati?")) {
-                isRecording = false;
-                totalDistanceMeters = 0; pathCoordinates = []; headingSamples = [];
-                startTime = null; endTime = null; maxSpeedObserved = 0;
-                polyline.setLatLngs([]);
-                document.getElementById('distanceDisplay').innerText = "0.00";
-                document.getElementById('speedDisplay').innerText = "0.0";
-                document.getElementById('hdgDisplay').innerText = "---";
-                btnFinish.disabled = true;
-                
-                btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-                btnToggle.className = "btn-interact bg-sea-600 hover:bg-sea-500 text-white text-sm font-bold py-3 px-3 rounded-xl shadow-md shadow-sea-500/30 transition-all flex items-center justify-center";
-                
-                updateMiniCtrlIconState();
-                toggleStatsPanel(false);
+            if (confirm("Attenzione: Cancellare i dati attuali senza salvare?")) {
+                resetLiveTracker();
             }
         });
 
         document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
-            }
+            if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock();
         });
 
         initMap();
