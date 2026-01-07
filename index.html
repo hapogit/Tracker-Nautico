@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tracker GPS Nautical Inverted</title>
+    <title>GPS Precision Pro</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -19,14 +19,14 @@
         /* --- Pannelli Comuni --- */
         .glass-panel {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(255,255,255,0.5);
+            border: 1px solid rgba(255,255,255,0.8);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* --- Pannello Controlli (Ora a DESTRA) --- */
+        /* --- Pannello Controlli (DESTRA) --- */
         .controls-overlay {
             z-index: 1000;
             transform-origin: top right;
@@ -39,25 +39,19 @@
             visibility: hidden;
         }
 
-        /* --- Pannello Report (Ora a SINISTRA) --- */
+        /* --- Pannello Report (SINISTRA) --- */
         .stats-overlay {
             z-index: 1000;
             transform-origin: top left;
         }
         
-        /* Card Stats Espansa */
-        .stats-card {
-            width: 260px; /* Compatto */
-        }
+        .stats-card { width: 260px; }
 
         /* Icone Rotonde */
         .circle-btn {
-            width: 3rem; /* 12 tailwind */
-            height: 3rem;
+            width: 3rem; height: 3rem;
             border-radius: 9999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-size: 1.25rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: transform 0.2s, background-color 0.2s;
@@ -68,11 +62,10 @@
 
         .hidden { display: none !important; }
 
-        /* Pulsante REC (bordo pulsante per icona destra) */
+        /* Animazione REC */
         .recording-pulse-border {
             animation: pulse-border-red 2s infinite;
-            background-color: white;
-            color: #dc2626;
+            background-color: white; color: #dc2626;
             border: 2px solid #dc2626;
         }
 
@@ -82,11 +75,13 @@
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
         
-        /* Bussola */
-        .compass-arrow {
-            display: inline-block;
-            transition: transform 0.5s ease-out;
-        }
+        .compass-arrow { display: inline-block; transition: transform 0.5s ease-out; }
+
+        /* Signal Strength Bars */
+        .signal-bar { width: 4px; border-radius: 1px; background-color: #e2e8f0; margin-right: 2px; display: inline-block;}
+        .signal-bar.active-low { background-color: #ef4444; }
+        .signal-bar.active-med { background-color: #eab308; }
+        .signal-bar.active-high { background-color: #22c55e; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -96,13 +91,10 @@
     <!-- ========================================== -->
 
     <div class="absolute top-4 left-4 flex flex-col items-start gap-2 stats-overlay">
-        
-        <!-- Bottone Icona Stats (Visibile se pannello chiuso) -->
         <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn bg-white text-slate-700 hover:bg-gray-50">
             <i class="fa-regular fa-clipboard"></i>
         </button>
 
-        <!-- Card Stats (Default nascosta) -->
         <div id="stats-card" class="glass-panel stats-card p-3 hidden flex flex-col gap-2">
             <div class="flex justify-between items-center border-b border-gray-200 pb-2">
                 <h3 class="font-bold text-sm text-slate-700"><i class="fa-solid fa-chart-line mr-2"></i>Riepilogo</h3>
@@ -129,7 +121,6 @@
                     <div class="font-bold text-sm text-slate-700"><span id="reportAvgHdg">---</span><span class="text-[10px]">°</span></div>
                 </div>
             </div>
-            
             <div class="text-center mt-1 border-t border-gray-100 pt-1">
                  <p class="text-[10px] text-gray-400">Max: <span id="reportMaxSpeed" class="font-bold text-gray-600">0.0</span> Kts</p>
             </div>
@@ -141,32 +132,34 @@
     <!-- ZONA DESTRA: CONTROLLI PRINCIPALI (GPS)    -->
     <!-- ========================================== -->
 
-    <!-- Icona Minimizzata GPS (Destra) -->
     <button id="mini-ctrl-icon" onclick="toggleRightPanel(true)" class="hidden absolute top-4 right-4 circle-btn bg-white text-slate-800 hover:bg-gray-50 z-[1001]">
         <i class="fa-solid fa-compass"></i>
     </button>
 
-    <!-- Pannello GPS (Destra) -->
     <div id="main-panel" class="absolute top-4 right-4 w-72 flex flex-col gap-2 glass-panel controls-overlay p-3">
         
         <div class="flex justify-between items-center mb-1">
-            <h1 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-location-arrow mr-2"></i>Live Tracker</h1>
+            <h1 class="text-sm font-bold text-slate-800 flex items-center">
+                <i class="fa-solid fa-location-arrow mr-2"></i>Live Tracker
+            </h1>
             <div class="flex items-center gap-2">
-                <div id="statusIndicator" class="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-200 text-gray-500">OFF</div>
+                <!-- Indicatore Precisione Grafico -->
+                <div id="signal-bars" class="flex items-end h-3 gap-0.5" title="Qualità Segnale GPS">
+                    <div class="signal-bar h-1.5" id="sig-1"></div>
+                    <div class="signal-bar h-2" id="sig-2"></div>
+                    <div class="signal-bar h-3" id="sig-3"></div>
+                </div>
                 <button onclick="toggleRightPanel(false)" class="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
                     <i class="fa-solid fa-compress text-xs"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Dati Live (Griglia a 3 colonne compatta) -->
         <div class="grid grid-cols-3 gap-1">
-            <!-- Velocità -->
             <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
                 <div class="text-[9px] text-gray-500 uppercase font-bold">Kts</div>
                 <div class="text-lg font-bold text-blue-600 leading-tight" id="speedDisplay">0.0</div>
             </div>
-            <!-- Heading -->
             <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center overflow-hidden">
                 <div class="text-[9px] text-gray-500 uppercase font-bold">HDG</div>
                 <div class="text-lg font-bold text-slate-700 leading-tight flex items-center justify-center gap-1">
@@ -174,14 +167,12 @@
                     <i id="compassArrow" class="fa-solid fa-location-arrow text-[8px] text-slate-400 compass-arrow transform -rotate-45"></i>
                 </div>
             </div>
-            <!-- Distanza -->
             <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
                 <div class="text-[9px] text-gray-500 uppercase font-bold">Nm</div>
                 <div class="text-lg font-bold text-emerald-600 leading-tight" id="distanceDisplay">0.00</div>
             </div>
         </div>
 
-        <!-- Coordinate -->
         <div class="bg-slate-50 border border-slate-200 rounded p-1.5">
             <div class="font-mono text-[10px] text-slate-700 flex justify-between">
                 <span>LAT:</span> <span id="latDisplay">--° --' --"</span>
@@ -189,16 +180,19 @@
             <div class="font-mono text-[10px] text-slate-700 flex justify-between">
                 <span>LON:</span> <span id="lonDisplay">--° --' --"</span>
             </div>
+            <!-- Info Precisione Testuale -->
+            <div class="text-[9px] text-right mt-1 text-gray-400">
+                Precisione: <span id="accuracyDisplay">--</span>m
+            </div>
         </div>
 
-        <!-- Attivazione GPS -->
         <div id="gps-init-container" class="mt-1">
             <button id="btnInitGPS" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 px-3 rounded shadow-sm transition-colors flex items-center justify-center">
-                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva GPS
+                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva GPS Max Precision
             </button>
+            <p class="text-[9px] text-gray-400 text-center mt-1">Impedisce spegnimento schermo.</p>
         </div>
 
-        <!-- Controlli Registrazione -->
         <div id="recording-controls" class="hidden flex flex-col gap-2 mt-1">
             <div class="grid grid-cols-2 gap-2">
                 <button id="btnToggle" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center">
@@ -215,56 +209,61 @@
     </div>
 
 
-    <!-- Container Mappa -->
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        // --- CONFIGURAZIONE PRECISIONE ---
+        const MIN_ACCURACY_THRESHOLD = 25; // Metri. Ignora punti con errore maggiore di questo
+        const MIN_DISTANCE_DELTA = 3;      // Metri. Ignora movimenti minori di questo (jitter)
+        const GPS_OPTIONS = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0 // Non usare mai cache, forza dati freschi
+        };
+
         // --- Variabili Globali ---
-        let map, marker, polyline;
+        let map, marker, polyline, accuracyCircle;
         let isRecording = false;
         let watchId = null;
+        let wakeLock = null; // Per Screen Wake Lock API
         let pathCoordinates = [];
         let totalDistanceMeters = 0;
         let gpsActive = false;
 
-        // Dati sessione
         let startTime = null;
         let endTime = null;
         let maxSpeedObserved = 0;
         let headingSamples = []; 
 
-        // --- Gestione UI ---
+        // --- Gestione Wake Lock (Mantiene schermo acceso) ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock active');
+                    wakeLock.addEventListener('release', () => console.log('Wake Lock released'));
+                }
+            } catch (err) {
+                console.warn(`${err.name}, ${err.message}`);
+            }
+        }
+
+        // --- UI ---
         const mainPanel = document.getElementById('main-panel');
         const miniCtrlIcon = document.getElementById('mini-ctrl-icon');
         const statsIconBtn = document.getElementById('stats-icon-btn');
         const statsCard = document.getElementById('stats-card');
 
-        // Toggle Pannello Destro (GPS)
         function toggleRightPanel(show) {
-            if (show) {
-                mainPanel.classList.remove('panel-hidden-right');
-                miniCtrlIcon.classList.add('hidden');
-            } else {
-                mainPanel.classList.add('panel-hidden-right');
-                setTimeout(() => {
-                    miniCtrlIcon.classList.remove('hidden');
-                    updateMiniCtrlIconState();
-                }, 300);
-            }
+            if (show) { mainPanel.classList.remove('panel-hidden-right'); miniCtrlIcon.classList.add('hidden'); }
+            else { mainPanel.classList.add('panel-hidden-right'); setTimeout(() => { miniCtrlIcon.classList.remove('hidden'); updateMiniCtrlIconState(); }, 300); }
         }
 
-        // Toggle Pannello Sinistro (Stats)
         function toggleStatsPanel(show) {
-            if (show) {
-                statsIconBtn.classList.add('hidden');
-                statsCard.classList.remove('hidden');
-            } else {
-                statsCard.classList.add('hidden');
-                statsIconBtn.classList.remove('hidden');
-            }
+            if (show) { statsIconBtn.classList.add('hidden'); statsCard.classList.remove('hidden'); }
+            else { statsCard.classList.add('hidden'); statsIconBtn.classList.remove('hidden'); }
         }
 
         function updateMiniCtrlIconState() {
@@ -277,15 +276,36 @@
             }
         }
 
-        // --- Inizializzazione Mappa ---
+        function updateSignalStrength(accuracy) {
+            const bars = [document.getElementById('sig-1'), document.getElementById('sig-2'), document.getElementById('sig-3')];
+            bars.forEach(b => b.className = 'signal-bar ' + (b.id === 'sig-1' ? 'h-1.5' : b.id === 'sig-2' ? 'h-2' : 'h-3'));
+            
+            document.getElementById('accuracyDisplay').innerText = Math.round(accuracy);
+            const accTxt = document.getElementById('accuracyDisplay');
+
+            if (accuracy <= 10) {
+                // Ottimo (Verde)
+                bars[0].classList.add('active-high');
+                bars[1].classList.add('active-high');
+                bars[2].classList.add('active-high');
+                accTxt.className = "font-bold text-emerald-600";
+            } else if (accuracy <= MIN_ACCURACY_THRESHOLD) {
+                // Accettabile (Giallo)
+                bars[0].classList.add('active-med');
+                bars[1].classList.add('active-med');
+                accTxt.className = "font-bold text-yellow-600";
+            } else {
+                // Scarso (Rosso)
+                bars[0].classList.add('active-low');
+                accTxt.className = "font-bold text-red-600";
+            }
+        }
+
+        // --- MAPPA ---
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([41.9028, 12.4964], 6);
-            // Zoom in basso sinistra per non coprire i controlli
             L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
 
             const boatIcon = L.divIcon({
                 className: 'custom-div-icon',
@@ -293,16 +313,18 @@
                 iconSize: [12, 12], iconAnchor: [6, 6]
             });
 
-            marker = L.marker([0, 0], {icon: boatIcon}); 
+            marker = L.marker([0, 0], {icon: boatIcon});
+            // Cerchio blu chiaro che mostra l'area di incertezza (Accuracy radius)
+            accuracyCircle = L.circle([0,0], {radius: 0, color: '#3b82f6', weight: 1, opacity: 0.4, fillOpacity: 0.1}).addTo(map);
             polyline = L.polyline([], {color: '#ef4444', weight: 3}).addTo(map);
         }
 
-        // --- Core Logic ---
+        // --- LOGICA ---
         function toDMS(c, isLat) {
             const abs = Math.abs(c);
             const d = Math.floor(abs);
             const m = Math.floor((abs - d) * 60);
-            const s = ((abs - d - m/60) * 3600).toFixed(0); // Arrotondato a 0 decimali per spazio
+            const s = ((abs - d - m/60) * 3600).toFixed(0);
             const dir = isLat ? (c>=0?"N":"S") : (c>=0?"E":"W");
             return `${d}° ${m}' ${s}" ${dir}`;
         }
@@ -323,30 +345,56 @@
 
         function startGPS() {
             const btnInit = document.getElementById('btnInitGPS');
-            btnInit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Attendere...';
+            btnInit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Calibrazione...';
+            
+            // Richiedi Wake Lock
+            requestWakeLock();
+
             if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
-                    enableHighAccuracy: true, timeout: 5000, maximumAge: 0
-                });
+                watchId = navigator.geolocation.watchPosition(processPosition, handleError, GPS_OPTIONS);
             } else {
                 alert("GPS non supportato");
             }
         }
 
-        function updatePosition(position) {
+        function processPosition(position) {
+            const accuracy = position.coords.accuracy;
+            
+            // Aggiorna UI segnale sempre, anche se i dati sono scarsi
+            updateSignalStrength(accuracy);
+
             if (!gpsActive) {
                 gpsActive = true;
                 document.getElementById('gps-init-container').classList.add('hidden');
                 document.getElementById('recording-controls').classList.remove('hidden');
-                document.getElementById('statusIndicator').innerText = "READY";
+                
+                // Prima posizione: centra mappa anche se precisione bassa
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                map.setView([lat, lon], 18);
             }
 
+            // --- FILTRO PRECISIONE ---
+            // Se l'accuratezza è peggiore della soglia (es. > 25m), IGNORA questo punto per i calcoli
+            // Mostriamo solo un aggiornamento visivo "debole" sulla mappa ma non registriamo i dati
+            if (accuracy > MIN_ACCURACY_THRESHOLD) {
+                console.warn(`Punto ignorato: precisione ${accuracy}m insufficiente`);
+                return; 
+            }
+
+            updateValidPosition(position);
+        }
+
+        function updateValidPosition(position) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
             let speedMs = position.coords.speed || 0;
             let heading = position.coords.heading;
+            const accuracy = position.coords.accuracy;
 
-            if (speedMs < 0) speedMs = 0;
+            // Filtro Drift da fermi: se velocità < 0.2 m/s, considerala 0
+            if (speedMs < 0.2) speedMs = 0;
+            
             const speedKts = parseFloat((speedMs * 1.94384).toFixed(1));
 
             // UI Updates
@@ -354,21 +402,22 @@
             document.getElementById('lonDisplay').innerText = toDMS(lon, false);
             document.getElementById('speedDisplay').innerText = speedKts;
             
-            const hdgDisplay = document.getElementById('hdgDisplay');
-            const compassArrow = document.getElementById('compassArrow');
-            
-            if (heading !== null && !isNaN(heading)) {
-                hdgDisplay.innerText = Math.round(heading);
-                compassArrow.style.transform = `rotate(${heading - 45}deg)`;
+            if (heading !== null && !isNaN(heading) && speedKts > 0.5) {
+                document.getElementById('hdgDisplay').innerText = Math.round(heading);
+                document.getElementById('compassArrow').style.transform = `rotate(${heading - 45}deg)`;
             }
 
+            // Map Update
             const currentLatLng = [lat, lon];
             if (!map.hasLayer(marker)) {
                 marker.setLatLng(currentLatLng).addTo(map);
-                map.setView(currentLatLng, 16);
             } else {
                 marker.setLatLng(currentLatLng);
             }
+            
+            // Aggiorna cerchio accuratezza
+            accuracyCircle.setLatLng(currentLatLng);
+            accuracyCircle.setRadius(accuracy);
 
             // Logica Registrazione
             if (isRecording) {
@@ -382,7 +431,8 @@
                 else {
                     const last = pathCoordinates[pathCoordinates.length - 1];
                     const dist = getDistance(last[0], last[1], lat, lon);
-                    if (dist > 2) { 
+                    // FILTRO DISTANZA MINIMA
+                    if (dist > MIN_DISTANCE_DELTA) { 
                         totalDistanceMeters += dist;
                         shouldAddPoint = true;
                         document.getElementById('distanceDisplay').innerText = (totalDistanceMeters / 1852).toFixed(2);
@@ -392,7 +442,7 @@
                 if (shouldAddPoint) {
                     pathCoordinates.push(currentLatLng);
                     polyline.setLatLngs(pathCoordinates);
-                    map.panTo(currentLatLng);
+                    map.panTo(currentLatLng); // Centra mappa sul punto valido
                 }
 
                 if (speedKts > maxSpeedObserved) maxSpeedObserved = speedKts;
@@ -409,13 +459,15 @@
 
         function finishSession() {
             if (!isRecording && totalDistanceMeters === 0) return;
-            
             isRecording = false;
             endTime = new Date();
             
+            if (wakeLock) {
+                wakeLock.release().then(() => wakeLock = null);
+            }
+
             btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
             btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
-            document.getElementById('statusIndicator').innerText = "DONE";
             updateMiniCtrlIconState();
 
             // Calcoli
@@ -426,61 +478,44 @@
 
             let avgHdgDisplay = "---";
             if (headingSamples.length > 0) {
-                const avgHdg = calculateAverageHeading(headingSamples);
-                avgHdgDisplay = Math.round(avgHdg);
+                avgHdgDisplay = Math.round(calculateAverageHeading(headingSamples));
             }
 
-            let seconds = Math.floor(durationMs / 1000);
-            let hours = Math.floor(seconds / 3600);
-            seconds %= 3600;
-            let minutes = Math.floor(seconds / 60);
-            seconds %= 60;
-            const timeString = `${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s`;
+            let s = Math.floor(durationMs / 1000);
+            let m = Math.floor(s / 60); s %= 60;
+            let h = Math.floor(m / 60); m %= 60;
+            const timeString = `${h>0?h+'h ':''}${m}m ${s}s`;
 
-            // Popola UI Report
             document.getElementById('reportDuration').innerText = timeString;
             document.getElementById('reportDistance').innerText = distNm.toFixed(2);
             document.getElementById('reportMaxSpeed').innerText = maxSpeedObserved.toFixed(1);
             document.getElementById('reportAvgSpeed').innerText = avgSpeed.toFixed(1);
             document.getElementById('reportAvgHdg').innerText = avgHdgDisplay;
 
-            // Apri pannello stats (SINISTRA)
             toggleStatsPanel(true);
         }
 
-        // --- Gestione Pulsanti ---
+        // --- Event Listeners ---
         document.getElementById('btnInitGPS').addEventListener('click', startGPS);
 
         const btnToggle = document.getElementById('btnToggle');
         const btnFinish = document.getElementById('btnFinish');
         const btnReset = document.getElementById('btnReset');
-        const statusInd = document.getElementById('statusIndicator');
 
         btnToggle.addEventListener('click', () => {
             if (!isRecording) {
-                // START
                 isRecording = true;
                 if (!startTime) startTime = new Date();
                 btnFinish.disabled = false;
-                
-                // Chiudi stats se aperte
                 toggleStatsPanel(false);
-
                 btnToggle.innerHTML = '<i class="fa-solid fa-pause mr-2"></i> Pausa';
                 btnToggle.className = "bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
-                statusInd.innerText = "REC";
-                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-red-500 text-white";
-                
                 updateMiniCtrlIconState();
                 setTimeout(() => toggleRightPanel(false), 1500);
-
             } else {
-                // PAUSE
                 isRecording = false;
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Riprendi';
                 btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
-                statusInd.innerText = "PAUSA";
-                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-yellow-100 text-yellow-600";
                 updateMiniCtrlIconState();
             }
         });
@@ -490,27 +525,24 @@
         btnReset.addEventListener('click', () => {
             if (confirm("Reset dati?")) {
                 isRecording = false;
-                totalDistanceMeters = 0;
-                pathCoordinates = [];
-                headingSamples = [];
-                startTime = null;
-                endTime = null;
-                maxSpeedObserved = 0;
-                
+                totalDistanceMeters = 0; pathCoordinates = []; headingSamples = [];
+                startTime = null; endTime = null; maxSpeedObserved = 0;
                 polyline.setLatLngs([]);
-                
                 document.getElementById('distanceDisplay').innerText = "0.00";
                 document.getElementById('speedDisplay').innerText = "0.0";
                 document.getElementById('hdgDisplay').innerText = "---";
-                
                 btnFinish.disabled = true;
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
                 btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
-                statusInd.innerText = "READY";
-                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-gray-200 text-gray-500";
-                
                 updateMiniCtrlIconState();
                 toggleStatsPanel(false);
+            }
+        });
+
+        // Gestione cambio visibilità (se l'utente cambia tab, il wake lock potrebbe cadere)
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
             }
         });
 
