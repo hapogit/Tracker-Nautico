@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tracker GPS Nautical</title>
+    <title>Tracker GPS Nautical Inverted</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -16,52 +16,59 @@
         body, html { height: 100%; margin: 0; padding: 0; overflow: hidden; }
         #map { height: 100%; width: 100%; z-index: 1; }
         
-        /* --- Pannello Controlli (Sinistra) --- */
-        .controls-overlay {
-            z-index: 1000;
+        /* --- Pannelli Comuni --- */
+        .glass-panel {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(5px);
             border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-origin: top left;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .panel-hidden {
+        /* --- Pannello Controlli (Ora a DESTRA) --- */
+        .controls-overlay {
+            z-index: 1000;
+            transform-origin: top right;
+        }
+
+        .panel-hidden-right {
             opacity: 0;
-            transform: scale(0.8) translateY(-20px);
+            transform: scale(0.9) translateX(20px) translateY(-20px);
             pointer-events: none;
             visibility: hidden;
         }
 
-        /* --- Pannello Report (Destra) --- */
+        /* --- Pannello Report (Ora a SINISTRA) --- */
         .stats-overlay {
             z-index: 1000;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: top left;
         }
-
-        /* Icona Report Minimizzata */
-        .stats-icon-btn {
-            background: white;
-            color: #475569;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-        .stats-icon-btn:hover { transform: scale(1.05); }
-
-        /* Card Report Espansa */
+        
+        /* Card Stats Espansa */
         .stats-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(5px);
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e2e8f0;
-            width: 300px; /* Allargato leggermente per i dati */
+            width: 260px; /* Compatto */
         }
+
+        /* Icone Rotonde */
+        .circle-btn {
+            width: 3rem; /* 12 tailwind */
+            height: 3rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, background-color 0.2s;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .circle-btn:active { transform: scale(0.95); }
 
         .hidden { display: none !important; }
 
-        /* Pulsante REC (bordo pulsante per icona sinistra) */
+        /* Pulsante REC (bordo pulsante per icona destra) */
         .recording-pulse-border {
             animation: pulse-border-red 2s infinite;
             background-color: white;
@@ -75,7 +82,7 @@
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
         
-        /* Bussola Rotante CSS */
+        /* Bussola */
         .compass-arrow {
             display: inline-block;
             transition: transform 0.5s ease-out;
@@ -85,128 +92,125 @@
 <body class="bg-gray-100 font-sans">
 
     <!-- ========================================== -->
-    <!-- ZONA SINISTRA: CONTROLLI E DATI LIVE       -->
+    <!-- ZONA SINISTRA: RIEPILOGO / REGISTRO        -->
     <!-- ========================================== -->
 
-    <!-- Icona Minimizzata (Sinistra) -->
-    <button id="mini-ctrl-icon" onclick="toggleLeftPanel(true)" class="hidden absolute top-4 left-4 w-12 h-12 rounded-full bg-white text-slate-800 flex items-center justify-center text-xl cursor-pointer hover:bg-gray-50 z-[1001] shadow-md">
-        <i class="fa-solid fa-compass"></i>
-    </button>
-
-    <!-- Pannello Principale (Sinistra) -->
-    <div id="main-panel" class="absolute top-4 left-4 right-4 md:right-auto md:w-[22rem] flex flex-col gap-3 controls-overlay p-4">
+    <div class="absolute top-4 left-4 flex flex-col items-start gap-2 stats-overlay">
         
-        <div class="flex justify-between items-center mb-1">
-            <h1 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-location-arrow mr-2"></i>Nautic Tracker</h1>
-            <div class="flex items-center gap-2">
-                <div id="statusIndicator" class="text-xs font-mono px-2 py-1 rounded bg-gray-200 text-gray-500">OFF</div>
-                <button onclick="toggleLeftPanel(false)" class="w-8 h-8 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
-                    <i class="fa-solid fa-compress text-sm"></i>
+        <!-- Bottone Icona Stats (Visibile se pannello chiuso) -->
+        <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="circle-btn bg-white text-slate-700 hover:bg-gray-50">
+            <i class="fa-regular fa-clipboard"></i>
+        </button>
+
+        <!-- Card Stats (Default nascosta) -->
+        <div id="stats-card" class="glass-panel stats-card p-3 hidden flex flex-col gap-2">
+            <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+                <h3 class="font-bold text-sm text-slate-700"><i class="fa-solid fa-chart-line mr-2"></i>Riepilogo</h3>
+                <button onclick="toggleStatsPanel(false)" class="text-gray-400 hover:text-gray-600 px-2">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-        </div>
-
-        <!-- Dati Live (Griglia a 3 colonne) -->
-        <div class="grid grid-cols-3 gap-2">
-            <!-- Velocità -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
-                <div class="text-[10px] text-gray-500 uppercase font-bold">Kts</div>
-                <div class="text-xl font-bold text-blue-600" id="speedDisplay">0.0</div>
-            </div>
-            <!-- Heading (Nuovo) -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center relative overflow-hidden">
-                <div class="text-[10px] text-gray-500 uppercase font-bold">HDG</div>
-                <div class="text-xl font-bold text-slate-700 flex items-center justify-center gap-1">
-                    <span id="hdgDisplay">---°</span>
-                    <!-- Freccia bussola visuale -->
-                    <i id="compassArrow" class="fa-solid fa-location-arrow text-[10px] text-slate-400 compass-arrow transform -rotate-45"></i>
+            
+            <div class="grid grid-cols-2 gap-y-3 gap-x-2">
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold">Durata</div>
+                    <div class="font-mono text-sm font-bold text-slate-800" id="reportDuration">--:--</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold">Distanza</div>
+                    <div class="font-bold text-sm text-emerald-600"><span id="reportDistance">0.00</span> <span class="text-[10px]">Nm</span></div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold">Vel. Media</div>
+                    <div class="font-bold text-sm text-indigo-600"><span id="reportAvgSpeed">0.0</span> <span class="text-[10px]">Kt</span></div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold">HDG Medio</div>
+                    <div class="font-bold text-sm text-slate-700"><span id="reportAvgHdg">---</span><span class="text-[10px]">°</span></div>
                 </div>
             </div>
-            <!-- Distanza -->
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
-                <div class="text-[10px] text-gray-500 uppercase font-bold">Nm</div>
-                <div class="text-xl font-bold text-emerald-600" id="distanceDisplay">0.00</div>
+            
+            <div class="text-center mt-1 border-t border-gray-100 pt-1">
+                 <p class="text-[10px] text-gray-400">Max: <span id="reportMaxSpeed" class="font-bold text-gray-600">0.0</span> Kts</p>
             </div>
-        </div>
-
-        <!-- Coordinate -->
-        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 mt-1">
-            <div class="font-mono text-xs text-slate-700 flex justify-between">
-                <span>LAT:</span> <span id="latDisplay">--° --' --" N</span>
-            </div>
-            <div class="font-mono text-xs text-slate-700 flex justify-between">
-                <span>LON:</span> <span id="lonDisplay">--° --' --" E</span>
-            </div>
-        </div>
-
-        <!-- Attivazione GPS -->
-        <div id="gps-init-container" class="mt-2">
-            <button id="btnInitGPS" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors shadow-lg">
-                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva GPS
-            </button>
-        </div>
-
-        <!-- Controlli Registrazione -->
-        <div id="recording-controls" class="hidden flex flex-col gap-2 mt-2">
-            <div class="grid grid-cols-2 gap-2">
-                <button id="btnToggle" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
-                    <i class="fa-solid fa-play mr-2"></i> Avvia
-                </button>
-                <button id="btnFinish" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i class="fa-solid fa-flag-checkered mr-2"></i> Fine
-                </button>
-            </div>
-            <button id="btnReset" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg text-xs transition-colors">
-                Reset Dati
-            </button>
         </div>
     </div>
 
 
     <!-- ========================================== -->
-    <!-- ZONA DESTRA: RIEPILOGO SESSIONE            -->
+    <!-- ZONA DESTRA: CONTROLLI PRINCIPALI (GPS)    -->
     <!-- ========================================== -->
 
-    <!-- Container Alto Destra -->
-    <div class="absolute top-4 right-4 flex flex-col items-end gap-2 stats-overlay">
-        
-        <!-- Bottone Icona -->
-        <button id="stats-icon-btn" onclick="toggleStatsPanel(true)" class="stats-icon-btn w-12 h-12 rounded-full flex items-center justify-center text-xl cursor-pointer">
-            <i class="fa-regular fa-clipboard"></i>
-        </button>
+    <!-- Icona Minimizzata GPS (Destra) -->
+    <button id="mini-ctrl-icon" onclick="toggleRightPanel(true)" class="hidden absolute top-4 right-4 circle-btn bg-white text-slate-800 hover:bg-gray-50 z-[1001]">
+        <i class="fa-solid fa-compass"></i>
+    </button>
 
-        <!-- Card Statistiche -->
-        <div id="stats-card" class="stats-card p-4 hidden flex flex-col gap-3">
-            <div class="flex justify-between items-center border-b border-gray-200 pb-2">
-                <h3 class="font-bold text-slate-700"><i class="fa-solid fa-chart-line mr-2"></i>Riepilogo</h3>
-                <button onclick="toggleStatsPanel(false)" class="text-gray-400 hover:text-gray-600">
-                    <i class="fa-solid fa-xmark"></i>
+    <!-- Pannello GPS (Destra) -->
+    <div id="main-panel" class="absolute top-4 right-4 w-72 flex flex-col gap-2 glass-panel controls-overlay p-3">
+        
+        <div class="flex justify-between items-center mb-1">
+            <h1 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-location-arrow mr-2"></i>Live Tracker</h1>
+            <div class="flex items-center gap-2">
+                <div id="statusIndicator" class="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-200 text-gray-500">OFF</div>
+                <button onclick="toggleRightPanel(false)" class="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
+                    <i class="fa-solid fa-compress text-xs"></i>
                 </button>
             </div>
-            
-            <div class="grid grid-cols-2 gap-y-4 gap-x-2">
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Durata</div>
-                    <div class="font-mono font-bold text-slate-800" id="reportDuration">--:--</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Distanza</div>
-                    <div class="font-bold text-emerald-600"><span id="reportDistance">0.00</span> <span class="text-xs">Nm</span></div>
-                </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">Vel. Media</div>
-                    <div class="font-bold text-indigo-600"><span id="reportAvgSpeed">0.0</span> <span class="text-xs">Kt</span></div>
-                </div>
-                <!-- HDG Medio (Nuovo) -->
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">HDG Medio</div>
-                    <div class="font-bold text-slate-700"><span id="reportAvgHdg">---</span><span class="text-xs">°</span></div>
+        </div>
+
+        <!-- Dati Live (Griglia a 3 colonne compatta) -->
+        <div class="grid grid-cols-3 gap-1">
+            <!-- Velocità -->
+            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
+                <div class="text-[9px] text-gray-500 uppercase font-bold">Kts</div>
+                <div class="text-lg font-bold text-blue-600 leading-tight" id="speedDisplay">0.0</div>
+            </div>
+            <!-- Heading -->
+            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center overflow-hidden">
+                <div class="text-[9px] text-gray-500 uppercase font-bold">HDG</div>
+                <div class="text-lg font-bold text-slate-700 leading-tight flex items-center justify-center gap-1">
+                    <span id="hdgDisplay">---</span><span class="text-xs align-top">°</span>
+                    <i id="compassArrow" class="fa-solid fa-location-arrow text-[8px] text-slate-400 compass-arrow transform -rotate-45"></i>
                 </div>
             </div>
-            
-            <div class="text-center mt-1 border-t border-gray-100 pt-2">
-                 <p class="text-[10px] text-gray-400">Vel. Max: <span id="reportMaxSpeed" class="font-bold text-gray-600">0.0</span> Kts</p>
+            <!-- Distanza -->
+            <div class="bg-slate-50 border border-slate-200 rounded p-1.5 text-center">
+                <div class="text-[9px] text-gray-500 uppercase font-bold">Nm</div>
+                <div class="text-lg font-bold text-emerald-600 leading-tight" id="distanceDisplay">0.00</div>
             </div>
+        </div>
+
+        <!-- Coordinate -->
+        <div class="bg-slate-50 border border-slate-200 rounded p-1.5">
+            <div class="font-mono text-[10px] text-slate-700 flex justify-between">
+                <span>LAT:</span> <span id="latDisplay">--° --' --"</span>
+            </div>
+            <div class="font-mono text-[10px] text-slate-700 flex justify-between">
+                <span>LON:</span> <span id="lonDisplay">--° --' --"</span>
+            </div>
+        </div>
+
+        <!-- Attivazione GPS -->
+        <div id="gps-init-container" class="mt-1">
+            <button id="btnInitGPS" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 px-3 rounded shadow-sm transition-colors flex items-center justify-center">
+                <i class="fa-solid fa-satellite-dish mr-2"></i> Attiva GPS
+            </button>
+        </div>
+
+        <!-- Controlli Registrazione -->
+        <div id="recording-controls" class="hidden flex flex-col gap-2 mt-1">
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btnToggle" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-play mr-2"></i> Avvia
+                </button>
+                <button id="btnFinish" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa-solid fa-flag-checkered mr-2"></i> Fine
+                </button>
+            </div>
+            <button id="btnReset" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1.5 px-3 rounded text-xs transition-colors">
+                Reset
+            </button>
         </div>
     </div>
 
@@ -230,9 +234,7 @@
         let startTime = null;
         let endTime = null;
         let maxSpeedObserved = 0;
-        
-        // Array per il calcolo della media vettoriale della prua
-        let headingSamples = []; // { sin: val, cos: val }
+        let headingSamples = []; 
 
         // --- Gestione UI ---
         const mainPanel = document.getElementById('main-panel');
@@ -240,12 +242,13 @@
         const statsIconBtn = document.getElementById('stats-icon-btn');
         const statsCard = document.getElementById('stats-card');
 
-        function toggleLeftPanel(show) {
+        // Toggle Pannello Destro (GPS)
+        function toggleRightPanel(show) {
             if (show) {
-                mainPanel.classList.remove('panel-hidden');
+                mainPanel.classList.remove('panel-hidden-right');
                 miniCtrlIcon.classList.add('hidden');
             } else {
-                mainPanel.classList.add('panel-hidden');
+                mainPanel.classList.add('panel-hidden-right');
                 setTimeout(() => {
                     miniCtrlIcon.classList.remove('hidden');
                     updateMiniCtrlIconState();
@@ -253,16 +256,7 @@
             }
         }
 
-        function updateMiniCtrlIconState() {
-            if (isRecording) {
-                miniCtrlIcon.innerHTML = '<i class="fa-solid fa-record-vinyl"></i>';
-                miniCtrlIcon.className = "absolute top-4 left-4 w-12 h-12 rounded-full flex items-center justify-center text-xl cursor-pointer recording-pulse-border z-[1001]";
-            } else {
-                miniCtrlIcon.innerHTML = '<i class="fa-solid fa-compass"></i>';
-                miniCtrlIcon.className = "absolute top-4 left-4 w-12 h-12 rounded-full bg-white text-slate-800 flex items-center justify-center text-xl cursor-pointer hover:bg-gray-50 z-[1001] shadow-md";
-            }
-        }
-
+        // Toggle Pannello Sinistro (Stats)
         function toggleStatsPanel(show) {
             if (show) {
                 statsIconBtn.classList.add('hidden');
@@ -273,22 +267,34 @@
             }
         }
 
+        function updateMiniCtrlIconState() {
+            if (isRecording) {
+                miniCtrlIcon.innerHTML = '<i class="fa-solid fa-record-vinyl"></i>';
+                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn flex items-center justify-center text-xl cursor-pointer recording-pulse-border z-[1001]";
+            } else {
+                miniCtrlIcon.innerHTML = '<i class="fa-solid fa-compass"></i>';
+                miniCtrlIcon.className = "absolute top-4 right-4 circle-btn bg-white text-slate-800 flex items-center justify-center text-xl cursor-pointer hover:bg-gray-50 z-[1001]";
+            }
+        }
+
         // --- Inizializzazione Mappa ---
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([41.9028, 12.4964], 6);
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            // Zoom in basso sinistra per non coprire i controlli
+            L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(map);
 
             const boatIcon = L.divIcon({
                 className: 'custom-div-icon',
-                html: "<div style='background-color:#3b82f6; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.5);'></div>",
-                iconSize: [14, 14], iconAnchor: [7, 7]
+                html: "<div style='background-color:#2563eb; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 6px rgba(0,0,0,0.5);'></div>",
+                iconSize: [12, 12], iconAnchor: [6, 6]
             });
 
             marker = L.marker([0, 0], {icon: boatIcon}); 
-            polyline = L.polyline([], {color: '#ef4444', weight: 4}).addTo(map);
+            polyline = L.polyline([], {color: '#ef4444', weight: 3}).addTo(map);
         }
 
         // --- Core Logic ---
@@ -296,7 +302,7 @@
             const abs = Math.abs(c);
             const d = Math.floor(abs);
             const m = Math.floor((abs - d) * 60);
-            const s = ((abs - d - m/60) * 3600).toFixed(1);
+            const s = ((abs - d - m/60) * 3600).toFixed(0); // Arrotondato a 0 decimali per spazio
             const dir = isLat ? (c>=0?"N":"S") : (c>=0?"E":"W");
             return `${d}° ${m}' ${s}" ${dir}`;
         }
@@ -305,30 +311,13 @@
             return L.latLng(lat1, lon1).distanceTo(L.latLng(lat2, lon2));
         }
 
-        // Calcola la media circolare degli angoli (in gradi)
         function calculateAverageHeading(samples) {
             if (samples.length === 0) return 0;
-            
-            let sumSin = 0;
-            let sumCos = 0;
-            
-            for (let s of samples) {
-                sumSin += s.sin;
-                sumCos += s.cos;
-            }
-            
-            const avgSin = sumSin / samples.length;
-            const avgCos = sumCos / samples.length;
-            
-            // atan2 restituisce radianti tra -PI e PI
-            let avgRad = Math.atan2(avgSin, avgCos);
-            
-            // Converti in gradi
+            let sumSin = 0, sumCos = 0;
+            for (let s of samples) { sumSin += s.sin; sumCos += s.cos; }
+            let avgRad = Math.atan2(sumSin / samples.length, sumCos / samples.length);
             let avgDeg = avgRad * (180 / Math.PI);
-            
-            // Normalizza a 0-360
             if (avgDeg < 0) avgDeg += 360;
-            
             return avgDeg;
         }
 
@@ -355,31 +344,24 @@
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
             let speedMs = position.coords.speed || 0;
-            
-            // Heading è null se fermo o non disponibile
             let heading = position.coords.heading;
 
             if (speedMs < 0) speedMs = 0;
             const speedKts = parseFloat((speedMs * 1.94384).toFixed(1));
 
-            // Aggiorna UI Sinistra
+            // UI Updates
             document.getElementById('latDisplay').innerText = toDMS(lat, true);
             document.getElementById('lonDisplay').innerText = toDMS(lon, false);
             document.getElementById('speedDisplay').innerText = speedKts;
             
-            // Aggiorna Heading Live
             const hdgDisplay = document.getElementById('hdgDisplay');
             const compassArrow = document.getElementById('compassArrow');
             
             if (heading !== null && !isNaN(heading)) {
-                hdgDisplay.innerText = Math.round(heading) + "°";
-                compassArrow.style.transform = `rotate(${heading - 45}deg)`; // -45 per compensare l'icona fa-location-arrow
-            } else {
-                // Se non c'è heading, mantieni ultimo o mostra trattini
-                // hdgDisplay.innerText = "---°"; 
+                hdgDisplay.innerText = Math.round(heading);
+                compassArrow.style.transform = `rotate(${heading - 45}deg)`;
             }
 
-            // Aggiorna Mappa
             const currentLatLng = [lat, lon];
             if (!map.hasLayer(marker)) {
                 marker.setLatLng(currentLatLng).addTo(map);
@@ -390,14 +372,9 @@
 
             // Logica Registrazione
             if (isRecording) {
-                // Logica Heading Medio: campiona solo se abbiamo velocità > 0.5 nodi (per evitare rumore da fermi)
                 if (speedKts > 0.5 && heading !== null && !isNaN(heading)) {
-                    // Converti in radianti e salva componenti vettoriali
                     const rad = heading * (Math.PI / 180);
-                    headingSamples.push({
-                        sin: Math.sin(rad),
-                        cos: Math.cos(rad)
-                    });
+                    headingSamples.push({ sin: Math.sin(rad), cos: Math.cos(rad) });
                 }
 
                 let shouldAddPoint = false;
@@ -430,7 +407,6 @@
             }
         }
 
-        // --- Funzione Fine Sessione ---
         function finishSession() {
             if (!isRecording && totalDistanceMeters === 0) return;
             
@@ -438,25 +414,22 @@
             endTime = new Date();
             
             btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-            btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors";
+            btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
             document.getElementById('statusIndicator').innerText = "DONE";
-            document.getElementById('statusIndicator').className = "text-xs font-mono px-2 py-1 rounded bg-gray-600 text-white";
             updateMiniCtrlIconState();
 
-            // Calcoli base
+            // Calcoli
             const durationMs = startTime ? (endTime - startTime) : 0;
             const distNm = totalDistanceMeters / 1852;
             const durationHours = durationMs / (1000 * 60 * 60);
             const avgSpeed = durationHours > 0 ? (distNm / durationHours) : 0;
 
-            // Calcolo Heading Medio
             let avgHdgDisplay = "---";
             if (headingSamples.length > 0) {
                 const avgHdg = calculateAverageHeading(headingSamples);
                 avgHdgDisplay = Math.round(avgHdg);
             }
 
-            // Formattazione Tempo
             let seconds = Math.floor(durationMs / 1000);
             let hours = Math.floor(seconds / 3600);
             seconds %= 3600;
@@ -471,6 +444,7 @@
             document.getElementById('reportAvgSpeed').innerText = avgSpeed.toFixed(1);
             document.getElementById('reportAvgHdg').innerText = avgHdgDisplay;
 
+            // Apri pannello stats (SINISTRA)
             toggleStatsPanel(true);
         }
 
@@ -489,23 +463,24 @@
                 if (!startTime) startTime = new Date();
                 btnFinish.disabled = false;
                 
+                // Chiudi stats se aperte
                 toggleStatsPanel(false);
 
                 btnToggle.innerHTML = '<i class="fa-solid fa-pause mr-2"></i> Pausa';
-                btnToggle.className = "bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors";
+                btnToggle.className = "bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
                 statusInd.innerText = "REC";
-                statusInd.className = "text-xs font-mono px-2 py-1 rounded bg-red-500 text-white";
+                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-red-500 text-white";
                 
                 updateMiniCtrlIconState();
-                setTimeout(() => toggleLeftPanel(false), 1500);
+                setTimeout(() => toggleRightPanel(false), 1500);
 
             } else {
                 // PAUSE
                 isRecording = false;
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Riprendi';
-                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors";
+                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
                 statusInd.innerText = "PAUSA";
-                statusInd.className = "text-xs font-mono px-2 py-1 rounded bg-yellow-100 text-yellow-600";
+                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-yellow-100 text-yellow-600";
                 updateMiniCtrlIconState();
             }
         });
@@ -513,7 +488,7 @@
         btnFinish.addEventListener('click', finishSession);
 
         btnReset.addEventListener('click', () => {
-            if (confirm("Resettare i dati?")) {
+            if (confirm("Reset dati?")) {
                 isRecording = false;
                 totalDistanceMeters = 0;
                 pathCoordinates = [];
@@ -526,13 +501,13 @@
                 
                 document.getElementById('distanceDisplay').innerText = "0.00";
                 document.getElementById('speedDisplay').innerText = "0.0";
-                document.getElementById('hdgDisplay').innerText = "---°";
+                document.getElementById('hdgDisplay').innerText = "---";
                 
                 btnFinish.disabled = true;
                 btnToggle.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Avvia';
-                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors";
+                btnToggle.className = "bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded transition-colors flex items-center justify-center";
                 statusInd.innerText = "READY";
-                statusInd.className = "text-xs font-mono px-2 py-1 rounded bg-gray-200 text-gray-500";
+                statusInd.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-gray-200 text-gray-500";
                 
                 updateMiniCtrlIconState();
                 toggleStatsPanel(false);
