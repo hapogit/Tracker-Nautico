@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caricamento in corso...</title>
+    <style>
+        /* --- Impostazioni Generali e Colori --- */
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Font moderno sans-serif */
+            /* Sfondo sfumato marino molto chiaro */
+            background: linear-gradient(to bottom, #E0F7FA, #B2EBF2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #00796B; /* Colore del testo (un verde acqua più scuro per contrasto) */
+            overflow: hidden; /* Nasconde eventuali barre di scorrimento durante l'animazione */
+        }
+
+        /* --- Contenitore Centrale --- */
+        .loader-container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h2 {
+            font-weight: 300; /* Testo leggero e minimale */
+            letter-spacing: 1px;
+            margin-top: 20px;
+            text-transform: uppercase;
+            font-size: 1.2rem;
+        }
+
+        /* --- Stile e Animazione SVG Nautico --- */
+        .nautical-loader {
+            width: 150px;
+            height: 150px;
+            /* L'SVG stesso pulserà leggermente per simulare il "respiro" del vento */
+            animation: wind-pulse 3s ease-in-out infinite alternate;
+        }
+
+        /* Definiamo i colori delle onde */
+        .wave-back { fill: #B2EBF2; opacity: 0.6; }
+        .wave-middle { fill: #80DEEA; opacity: 0.8; }
+        .wave-front { fill: #4DD0E1; opacity: 1; }
+
+        /* Le animazioni delle onde per simulare il mare in movimento */
+        .wave-anim-back { animation: wave-move 4s linear infinite; }
+        .wave-anim-middle { animation: wave-move 3s linear infinite reverse; } /* Si muove al contrario per profondità */
+        .wave-anim-front { animation: wave-move 2.5s linear infinite; }
+
+
+        /* --- Keyframes per le Animazioni CSS --- */
+        /* Movimento orizzontale delle onde */
+        @keyframes wave-move {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100px); } /* Sposta l'onda a sinistra */
+        }
+
+        /* Pulsazione generale per l'effetto vento */
+        @keyframes wind-pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loader-container">
+        <svg class="nautical-loader" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+             /* Descrizione SVG:
+               Usiamo tre elementi <path> sovrapposti per creare le onde.
+               Ognuno ha un colore diverso e una velocità di animazione diversa.
+               I disegni delle onde sono più larghi del riquadro visibile (400px invece di 200px)
+               per permettere un movimento fluido e continuo.
+             */
+            <path class="wave-back wave-anim-back" 
+                  d="M0,100 C50,90 100,110 150,100 C200,90 250,110 300,100 C350,90 400,110 450,100 L450,200 L0,200 Z" />
+            
+            <path class="wave-middle wave-anim-middle" 
+                  d="M0,120 C60,100 120,140 180,120 C240,100 300,140 360,120 C420,100 480,140 540,120 L540,200 L0,200 Z" />
+            
+            <path class="wave-front wave-anim-front" 
+                  d="M0,140 C40,130 80,150 120,140 C160,130 200,150 240,140 C280,130 320,150 360,140 L360,200 L0,200 Z" />
+        </svg>
+        <h2>Caricamento Tracker...</h2>
+    </div>
+
+    <script>
+        /* --- Script di Reindirizzamento --- */
+        // Questo script aspetta un determinato periodo di tempo e poi cambia pagina.
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Tempo di attesa in millisecondi (ad es. 4000ms = 4 secondi)
+            const tempoDiAttesa = 4000; 
+            
+            // L'URL della pagina a cui vuoi andare.
+            // IMPORTANTE: Assicurati che questo file esista!
+            const paginaDestinazione = 'tracker.html'; 
+
+            setTimeout(function() {
+                // Questa riga esegue il reindirizzamento effettivo
+                window.location.href = paginaDestinazione;
+            }, tempoDiAttesa);
+        });
+    </script>
+
+</body>
+</html>
